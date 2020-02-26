@@ -27,6 +27,8 @@ impl Chunk {
         let mut file = File::open(location.clone()).unwrap();
         let mut header_buffer = [0; 128];
         file.read(&mut header_buffer).unwrap();
+        let x: [u8; 16] = header_buffer[18..34].try_into().unwrap();
+        println!("{:?}", x);
         let header = Header {
             file_type: header_buffer[0],
             version: header_buffer[1],
@@ -34,7 +36,7 @@ impl Chunk {
             chunk_start_number: i32::from_le_bytes(header_buffer[7..11].try_into().unwrap()),
             chunk_end_number: i32::from_le_bytes(header_buffer[12..16].try_into().unwrap()),
             is_scavenged: header_buffer[17],
-            chunk_id: Uuid::from_bytes(utils::convert_dotnet_guid(header_buffer).try_into().unwrap()),
+            chunk_id: utils::convert_dotnet_guid(header_buffer[18..34].try_into().unwrap()),
         };
         return Chunk {
             header,
