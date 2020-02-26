@@ -1,3 +1,4 @@
+pub mod utils;
 use std::convert::TryInto;
 use uuid::Uuid;
 use std::{
@@ -26,11 +27,6 @@ impl Chunk {
         let mut file = File::open(location.clone()).unwrap();
         let mut header_buffer = [0; 128];
         file.read(&mut header_buffer).unwrap();
-        let order = [3, 2, 1, 0, 5, 4, 7, 6, 8, 9, 10, 11, 12, 13, 14, 15];
-        let mut uuid: [u8; 16] = [0; 16];
-        for n in 0..16 {
-            uuid[n] = header_buffer[18 + order[n]];
-        }
         let header = Header {
             file_type: header_buffer[0],
             version: header_buffer[1],
@@ -38,7 +34,7 @@ impl Chunk {
             chunk_start_number: i32::from_le_bytes(header_buffer[7..11].try_into().unwrap()),
             chunk_end_number: i32::from_le_bytes(header_buffer[12..16].try_into().unwrap()),
             is_scavenged: header_buffer[17],
-            chunk_id: Uuid::from_bytes(uuid.try_into().unwrap()),
+            chunk_id: Uuid::from_bytes(utils::convert_dotnet_guid(header_buffer).try_into().unwrap()),
         };
         return Chunk {
             header,
