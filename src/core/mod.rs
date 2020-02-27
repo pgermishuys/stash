@@ -55,14 +55,14 @@ impl Chunk {
         let flags: u8 = buffer[0];
 
         let is_map_12_bytes = (flags & 2) != 0;
-        let mut logical_data_size: i64;
+        let logical_data_size: i64;
         if is_map_12_bytes {
             logical_data_size = i64::from_le_bytes(buffer[5..13].try_into().unwrap());
         } else {
             logical_data_size = i64::from_le_bytes(buffer[5..9].try_into().unwrap());
         }
 
-        let mut map_size: i32 = 0;
+        let map_size: i32;
         if is_map_12_bytes {
             map_size = i32::from_le_bytes(buffer[14..18].try_into().unwrap());
         } else {
