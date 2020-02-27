@@ -37,7 +37,7 @@ impl Chunk {
     pub fn open(location: String) -> Chunk {
         let mut file = File::open(location.clone()).unwrap();
         let mut buffer = [0; HEADER_AND_FOOTER_SIZE];
-        file.read(&mut buffer).unwrap();
+        let _ = file.read(&mut buffer).unwrap();
 
         let header = Header {
             file_type: buffer[0],
@@ -50,27 +50,27 @@ impl Chunk {
         };
 
         let _ = file.seek(std::io::SeekFrom::End(-(HEADER_AND_FOOTER_SIZE as i64)));
-        file.read(&mut buffer).unwrap();
+        let _ = file.read(&mut buffer).unwrap();
 
         let flags: u8 = buffer[0];
 
         let is_map_12_bytes = (flags & 2) != 0;
-        let logical_data_size: i64;
-        if is_map_12_bytes {
-            logical_data_size = i64::from_le_bytes(buffer[5..13].try_into().unwrap());
-        } else {
-            logical_data_size = i64::from_le_bytes(buffer[5..9].try_into().unwrap());
-        }
 
-        let map_size: i32;
-        if is_map_12_bytes {
-            map_size = i32::from_le_bytes(buffer[14..18].try_into().unwrap());
+        let logical_data_size = if is_map_12_bytes {
+            i64::from_le_bytes(buffer[5..13].try_into().unwrap())
         } else {
-            map_size = i32::from_le_bytes(buffer[10..14].try_into().unwrap());
-        }
+            i64::from_le_bytes(buffer[5..9].try_into().unwrap())
+        };
+
+        let map_size = if is_map_12_bytes {
+            i32::from_le_bytes(buffer[14..18].try_into().unwrap())
+        } else {
+            i32::from_le_bytes(buffer[10..14].try_into().unwrap())
+        };
+
         let physical_data_size = i32::from_le_bytes(buffer[1..5].try_into().unwrap());
         let _ = file.seek(std::io::SeekFrom::End(-(CHECK_SUM_SIZE as i64)));
-        file.read(&mut buffer).unwrap();
+        let _ = file.read(&mut buffer).unwrap();
         let footer = Footer {
             flags,
             is_completed: (flags & 1) != 0,
@@ -81,10 +81,10 @@ impl Chunk {
             hash: buffer[0..CHECK_SUM_SIZE].try_into().unwrap(),
         };
 
-        return Chunk {
+        Chunk {
             header,
             footer,
             location,
-        };
+        }
     }
 }

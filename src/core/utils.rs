@@ -5,7 +5,7 @@ pub fn convert_dotnet_guid(buffer: [u8; 16]) -> Uuid {
     for n in 0..16 {
         uuid[n] = buffer[order[n]];
     }
-    return Uuid::from_bytes(uuid);
+    Uuid::from_bytes(uuid)
 }
 
 #[cfg(test)]
