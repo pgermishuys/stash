@@ -1,12 +1,9 @@
 pub mod utils;
 use std::convert::TryInto;
+use std::{fs::File, io::prelude::*};
 use uuid::Uuid;
-use std::{
-    fs::File,
-    io::prelude::*
-};
 
-const HEADER_SIZE: usize = 128;
+const HEADER_AND_FOOTER_SIZE: usize = 128;
 #[derive(Debug)]
 pub struct Header {
     file_type: u8,
@@ -14,11 +11,10 @@ pub struct Header {
     chunk_size: i32,
     chunk_start_number: i32,
     chunk_end_number: i32,
-    is_scavenged: u8,
-    chunk_id: Uuid
+    is_scavenged: bool,
+    chunk_id: Uuid,
 }
 
-const FOOTER_SIZE: usize = 128;
 const CHECK_SUM_SIZE: usize = 16;
 #[derive(Debug)]
 pub struct Footer {
@@ -28,18 +24,19 @@ pub struct Footer {
     physical_data_size: i32,
     logical_data_size: i64,
     map_size: i32,
+    hash: [u8; 16],
 }
 
 pub struct Chunk {
     pub header: Header,
     pub footer: Footer,
-    pub location: String
+    pub location: String,
 }
 
 impl Chunk {
     pub fn open(location: String) -> Chunk {
         let mut file = File::open(location.clone()).unwrap();
-        let mut buffer = [0; 128];
+        let mut buffer = [0; HEADER_AND_FOOTER_SIZE];
         file.read(&mut buffer).unwrap();
 
         let header = Header {
@@ -48,21 +45,21 @@ impl Chunk {
             chunk_size: i32::from_le_bytes(buffer[2..6].try_into().unwrap()),
             chunk_start_number: i32::from_le_bytes(buffer[7..11].try_into().unwrap()),
             chunk_end_number: i32::from_le_bytes(buffer[12..16].try_into().unwrap()),
-            is_scavenged: buffer[17],
+            is_scavenged: buffer[17] == 1u8,
             chunk_id: utils::convert_dotnet_guid(buffer[18..34].try_into().unwrap()),
         };
 
-        file.seek(std::io::SeekFrom::End(-(FOOTER_SIZE as i64)));
+        let _ = file.seek(std::io::SeekFrom::End(-(HEADER_AND_FOOTER_SIZE as i64)));
         file.read(&mut buffer).unwrap();
 
         let flags: u8 = buffer[0];
 
         let is_map_12_bytes = (flags & 2) != 0;
-        let mut logical_size: i64 = 0;
+        let mut logical_data_size: i64;
         if is_map_12_bytes {
-            logical_size = i64::from_le_bytes(buffer[5..13].try_into().unwrap());
+            logical_data_size = i64::from_le_bytes(buffer[5..13].try_into().unwrap());
         } else {
-            logical_size = i64::from_le_bytes(buffer[5..9].try_into().unwrap());
+            logical_data_size = i64::from_le_bytes(buffer[5..9].try_into().unwrap());
         }
 
         let mut map_size: i32 = 0;
@@ -71,20 +68,23 @@ impl Chunk {
         } else {
             map_size = i32::from_le_bytes(buffer[10..14].try_into().unwrap());
         }
-
+        let physical_data_size = i32::from_le_bytes(buffer[1..5].try_into().unwrap());
+        let _ = file.seek(std::io::SeekFrom::End(-(CHECK_SUM_SIZE as i64)));
+        file.read(&mut buffer).unwrap();
         let footer = Footer {
             flags,
             is_completed: (flags & 1) != 0,
             is_map_12_bytes,
-            physical_data_size: i32::from_le_bytes(buffer[1..5].try_into().unwrap()),
-            logical_data_size: logical_size,
+            physical_data_size,
+            logical_data_size,
             map_size,
+            hash: buffer[0..CHECK_SUM_SIZE].try_into().unwrap(),
         };
 
         return Chunk {
             header,
             footer,
             location,
-        }
+        };
     }
 }
