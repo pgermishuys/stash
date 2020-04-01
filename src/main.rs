@@ -1,8 +1,7 @@
-mod core;
-
+pub mod core;
+use crate::core::transaction_log::chunk_db;
 fn main() {
-    let chunk = core::Chunk::open(
-        "D:\\databases\\performance\\chunk-000000.000000"
+    let chunk = chunk_db::ChunkDb::open("D:\\databases\\projections-unhandled-bytes-v1\\chunk-000000.000000"
             .parse()
             .unwrap(),
     );
